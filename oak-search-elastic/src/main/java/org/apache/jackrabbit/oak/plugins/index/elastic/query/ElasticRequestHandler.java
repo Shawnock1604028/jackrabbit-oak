@@ -565,7 +565,7 @@ public class ElasticRequestHandler {
                     if (elasticIndexDefinition.inferenceDefinition != null && elasticIndexDefinition.inferenceDefinition.queries != null) {
                         bqBuilder.must(m -> m.bool(b -> inference(b, propertyName, text, pr, includeDynamicBoostedValues)));
                     } else {
-                        QueryStringQuery.Builder qsqBuilder = fullTextQuery(text, getElasticFieldName(propertyName), pr, includeDynamicBoostedValues);
+                        QueryStringQuery.Builder qsqBuilder = fullTextQuery(text, getElasticFulltextFieldName(propertyName), pr, includeDynamicBoostedValues);
                         bqBuilder.must(m -> m.queryString(qsqBuilder.build()));
                     }
                 }
@@ -604,7 +604,7 @@ public class ElasticRequestHandler {
             }
         }
 
-        QueryStringQuery.Builder qsqBuilder = fullTextQuery(queryText, getElasticFieldName(propertyName), pr, dbEnabled);
+        QueryStringQuery.Builder qsqBuilder = fullTextQuery(queryText, getElasticFulltextFieldName(propertyName), pr, dbEnabled);
 
         // the query can be null if no inference query is eligible for the given text or the min terms are not met
         // in this case, we fall back to the default full-text query
@@ -931,33 +931,26 @@ public class ElasticRequestHandler {
             }
             default: {
                 if (pr.isLike) {
-                    return like(propertyName, pr.first.getValue(Type.STRING));
+                    in = like(propertyName, pr.first.getValue(Type.STRING));
+                } else {
+                    // TODO Confirm that all other types can be treated as string
+                    in = newPropertyRestrictionQuery(field, pr, value -> value.getValue(Type.STRING));
                 }
-
-                // TODO Confirm that all other types can be treated as string
-                in = newPropertyRestrictionQuery(field, pr, value -> value.getValue(Type.STRING));
             }
         }
-
         if (in != null) {
             return in;
         }
-
         throw new IllegalStateException("PropertyRestriction not handled " + pr + " for index " + defn);
     }
 
-    private String getElasticFieldName(@Nullable String p) {
-        if (p == null) {
+    private String getElasticFulltextFieldName(@Nullable String propertyName) {
+        if (propertyName == null || "*".equals(propertyName)) {
             return FieldNames.FULLTEXT;
         }
-
         if (planResult.isPathTransformed()) {
-            p = PathUtils.getName(p);
+            propertyName = PathUtils.getName(propertyName);
         }
-
-        if ("*".equals(p)) {
-            p = FieldNames.FULLTEXT;
-        }
-        return p;
+        return propertyName;
     }
 }

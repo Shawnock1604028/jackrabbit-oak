@@ -1271,6 +1271,12 @@ public class IndexDefinition implements Aggregate.AggregateMapper {
                 return config;
             } else if (!namePatterns.isEmpty()) {
                 // check patterns
+                if (NodeStateUtils.isHidden(propertyName)) {
+                    // hidden properties (eg. ":nodeName") do match the regex,
+                    // and we should probably ignore them;
+                    // but doing so would break "bug compatibility"
+                    // return null;
+                }
                 for (NamePattern np : namePatterns) {
                     if (np.matches(propertyName)) {
                         return np.getConfig();

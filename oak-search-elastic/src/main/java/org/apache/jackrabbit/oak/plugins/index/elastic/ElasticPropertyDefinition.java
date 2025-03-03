@@ -43,6 +43,17 @@ public class ElasticPropertyDefinition extends PropertyDefinition {
     private static final String PROP_USE_IN_FULL_TEXT_QUERY = "useInFullTextQuery";
     private final boolean useInFullTextQuery;
 
+    /**
+     * Whether regex properties are flattened (using the "flattened" field type)
+     */
+    public static final String PROP_IS_FLATTENED = "isFlattened";
+    private final boolean isFlattened;
+
+    /**
+     * The default value for the "isFlattened" property.
+     */
+    public static final boolean PROP_IS_FLATTENED_DEFAULT = false;
+
     public ElasticPropertyDefinition(IndexDefinition.IndexingRule idxDefn, String nodeName, NodeState defn) {
         super(idxDefn, nodeName, defn);
         if (this.useInSimilarity) {
@@ -53,6 +64,14 @@ public class ElasticPropertyDefinition extends PropertyDefinition {
                     getOptionalValue(defn, PROP_CANDIDATES, DEFAULT_CANDIDATES));
         }
         this.useInFullTextQuery = this.dynamicBoost && getOptionalValue(defn, PROP_USE_IN_FULL_TEXT_QUERY, true);
+        boolean flattened = getOptionalValue(defn, PROP_IS_FLATTENED, PROP_IS_FLATTENED_DEFAULT);
+        if (analyzed) {
+            // if analyzed is enabled, then flattened needs to be disabled,
+            // because flattened types do not support fulltext queries
+            // in the same way
+            flattened = false;
+        }
+        this.isFlattened = flattened;
     }
 
     @Override
@@ -75,7 +94,19 @@ public class ElasticPropertyDefinition extends PropertyDefinition {
     public boolean useInFullTextQuery() {
         return useInFullTextQuery;
     }
+  
+    public boolean isFlattened() {
+        return isFlattened;
+    }
 
+    @Override
+    public String toString() {
+        return "ElasticPropertyDefinition{" + super.toString() +
+                ", useInFullTextQuery=" + useInFullTextQuery +
+                ", isFlattened=" + isFlattened +
+                '}';
+    }
+      
     /**
      * Class for defining parameters of approximate knn search on dense_vector fields
      * <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/dense-vector.html">...</a> and
@@ -134,5 +165,6 @@ public class ElasticPropertyDefinition extends PropertyDefinition {
         public int getCandidates() {
             return candidates;
         }
+      
     }
 }
