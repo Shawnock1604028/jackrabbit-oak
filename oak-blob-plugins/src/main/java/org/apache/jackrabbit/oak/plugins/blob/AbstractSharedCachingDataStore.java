@@ -58,6 +58,7 @@ import org.slf4j.LoggerFactory;
 
 import org.apache.jackrabbit.guava.common.base.Stopwatch;
 import org.apache.jackrabbit.guava.common.collect.Iterators;
+import org.apache.jackrabbit.guava.common.io.Closeables;
 import org.apache.jackrabbit.guava.common.util.concurrent.ListeningExecutorService;
 
 /**
@@ -334,7 +335,7 @@ public abstract class AbstractSharedCachingDataStore extends AbstractDataStore
                         copyInputStreamToFile(in, tmpFile);
                         return new LazyFileInputStream(tmpFile);
                     } finally {
-                        in.close();
+                        Closeables.close(in, false);
                     }
                 } else {
                     return new FileInputStream(cached);

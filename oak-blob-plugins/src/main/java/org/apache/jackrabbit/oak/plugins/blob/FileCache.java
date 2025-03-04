@@ -49,6 +49,7 @@ import org.slf4j.LoggerFactory;
 
 import org.apache.jackrabbit.guava.common.base.Stopwatch;
 import org.apache.jackrabbit.guava.common.cache.AbstractCache;
+import org.apache.jackrabbit.guava.common.io.Closeables;
 
 /**
  */
@@ -109,12 +110,18 @@ public class FileCache extends AbstractCache<String, File> implements Closeable 
                 if (cachedFile.exists()) {
                     return cachedFile;
                 } else {
+                    InputStream is = null;
+                    boolean threw = true;
                     long startNanos = System.nanoTime();
-                    try (InputStream is = loader.load(key))  {
+                    try {
+                        is = loader.load(key);
                         copyInputStreamToFile(is, cachedFile);
+                        threw = false;
                     } catch (Exception e) {
                         LOG.warn("Error reading object for id [{}] from backend", key, e);
                         throw e;
+                    } finally {
+                        Closeables.close(is, threw);
                     }
                     if (LOG.isDebugEnabled()) {
                         LOG.debug("Loaded file: {} in {}", key, (System.nanoTime() - startNanos) / 1_000_000);

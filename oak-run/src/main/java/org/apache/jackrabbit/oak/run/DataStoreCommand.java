@@ -41,6 +41,7 @@ import java.util.stream.StreamSupport;
 
 import org.apache.jackrabbit.guava.common.base.Splitter;
 import org.apache.jackrabbit.guava.common.base.Stopwatch;
+import org.apache.jackrabbit.guava.common.io.Closeables;
 import org.apache.jackrabbit.guava.common.io.Closer;
 import joptsimple.OptionParser;
 import org.apache.commons.io.FileUtils;
@@ -238,13 +239,7 @@ public class DataStoreCommand implements Command {
 
                     FileUtils.copyFile(referencesTemp, references);
                 } finally {
-                    try {
-                        writer.close();
-                    } catch (IOException ex) {
-                        if (!threw) {
-                            throw ex;
-                        }
-                    }
+                    Closeables.close(writer, threw);
                 }
             } else if (dataStoreOpts.dumpIds()) {
                 log.info("Initiating dump of data store IDs");

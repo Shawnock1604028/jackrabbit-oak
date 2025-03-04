@@ -36,6 +36,7 @@ import ch.qos.logback.classic.Level;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.jackrabbit.guava.common.base.Splitter;
 import org.apache.jackrabbit.guava.common.base.Stopwatch;
+import org.apache.jackrabbit.guava.common.io.Closeables;
 import com.mongodb.BasicDBObject;
 import com.mongodb.ReadPreference;
 import com.mongodb.client.MongoCollection;
@@ -397,18 +398,26 @@ public class MongoBlobGCTest extends AbstractMongoConnectionTest {
     }
 
     private static void assertBlobReferences(Set<String> expected, String rootFolder) throws IOException {
-        try (InputStream is = new FileInputStream(getMarkedFile(rootFolder))) {
+        InputStream is = null;
+        try {
+            is = new FileInputStream(getMarkedFile(rootFolder));
             Set<String> records = FileIOUtils.readStringsAsSet(is, true);
             assertEquals(expected, records);
+        } finally {
+            Closeables.close(is, false);
         }
     }
 
     private static void assertBlobReferenceRecords(int expected, String rootFolder) throws IOException {
-        try (InputStream is = new FileInputStream(getMarkedFile(rootFolder))) {
+        InputStream is = null;
+        try {
+            is = new FileInputStream(getMarkedFile(rootFolder));
             Set<String> records = FileIOUtils.readStringsAsSet(is, true);
             for (String rec : records) {
                 assertEquals(expected, Splitter.on(",").omitEmptyStrings().splitToList(rec).size());
             }
+        } finally {
+            Closeables.close(is, false);
         }
     }
 
@@ -500,36 +509,42 @@ public class MongoBlobGCTest extends AbstractMongoConnectionTest {
             this.maxLastModifiedInterval = maxLastModifiedInterval;
             this.additionalBlobs = new HashSet<>();
         }
-
+        
         @Override
         protected void markAndSweep(boolean markOnly, boolean forceBlobRetrieve) throws Exception {
-
-            try (GarbageCollectorFileState fs = new GarbageCollectorFileState(root)) {
+            boolean threw = true;
+            GarbageCollectorFileState fs = new GarbageCollectorFileState(root);
+            try {
                 Stopwatch sw = Stopwatch.createStarted();
                 LOG.info("Starting Test Blob garbage collection");
-
+                
                 // Sleep a little more than the max interval to get over the interval for valid blobs
                 Thread.sleep(maxLastModifiedInterval + 1000);
                 LOG.info("Slept {} to make blobs old", maxLastModifiedInterval + 1000);
-
+                
                 long markStart = System.currentTimeMillis();
                 mark(fs);
                 LOG.info("Mark finished");
-
+                
                 additionalBlobs = createAdditional();
-
+    
                 if (!markOnly) {
                     Thread.sleep(maxLastModifiedInterval + 100);
                     LOG.info("Slept {} to make additional blobs old", maxLastModifiedInterval + 100);
-
+    
                     long deleteCount = sweep(fs, markStart, forceBlobRetrieve);
-
+                    threw = false;
+            
                     LOG.info("Blob garbage collection completed in {}. Number of blobs deleted [{}]", sw.toString(),
                         deleteCount, maxLastModifiedInterval);
                 }
+            } finally {
+                if (!LOG.isTraceEnabled()) {
+                    Closeables.close(fs, threw);
+                }
             }
         }
-
+    
         public HashSet<String> createAdditional() throws Exception {
             HashSet<String> blobSet = new HashSet<String>();
             DocumentNodeStore s = mk.getNodeStore();

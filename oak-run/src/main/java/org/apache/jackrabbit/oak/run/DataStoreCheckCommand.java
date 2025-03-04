@@ -17,6 +17,7 @@
 package org.apache.jackrabbit.oak.run;
 
 import static org.apache.jackrabbit.guava.common.base.Stopwatch.createStarted;
+import static org.apache.jackrabbit.guava.common.io.Closeables.close;
 import static java.io.File.createTempFile;
 import static java.util.Arrays.asList;
 import static org.apache.commons.io.FileUtils.forceDelete;
@@ -46,6 +47,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.jackrabbit.guava.common.base.Splitter;
 import org.apache.jackrabbit.guava.common.base.Stopwatch;
+import org.apache.jackrabbit.guava.common.io.Closeables;
 import org.apache.jackrabbit.guava.common.io.Closer;
 import com.mongodb.MongoClient;
 import com.mongodb.MongoClientURI;
@@ -424,8 +426,10 @@ public class DataStoreCheckCommand implements Command {
 
     private static void retrieveBlobReferences(GarbageCollectableBlobStore blobStore, BlobReferenceRetriever marker,
         File marked, String dsType, boolean isVerbose) throws IOException {
+        final BufferedWriter writer = new BufferedWriter(new FileWriter(marked, StandardCharsets.UTF_8));
         final AtomicInteger count = new AtomicInteger();
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter(marked, StandardCharsets.UTF_8))) {
+        boolean threw = true;
+        try {
             final GarbageCollectableBlobStore finalBlobStore = blobStore;
 
             System.out.println("Starting dump of blob references");
@@ -460,6 +464,9 @@ public class DataStoreCheckCommand implements Command {
 
             System.out.println(count.get() + " blob references found");
             System.out.println("Finished in " + watch.elapsed(TimeUnit.SECONDS) + " seconds");
+            threw = false;
+        } finally {
+            close(writer, threw);
         }
     }
 
@@ -536,11 +543,14 @@ public class DataStoreCheckCommand implements Command {
         }
 
         public void traverse(String ... paths) throws IOException {
+            BufferedWriter writer = null;
             final AtomicInteger count = new AtomicInteger();
+            boolean threw = true;
             System.out.println("Starting dump of blob references by traversing");
             Stopwatch watch = createStarted();
 
-            try (BufferedWriter writer = new BufferedWriter(new FileWriter(references, StandardCharsets.UTF_8))) {
+            try {
+                writer = new BufferedWriter(new FileWriter(references, StandardCharsets.UTF_8));
                 if (paths.length == 0) {
                     traverseChildren(nodeStore.getRoot(), "/", writer, count);
                 } else {
@@ -560,6 +570,9 @@ public class DataStoreCheckCommand implements Command {
 
                 System.out.println(count.get() + " blob references found");
                 System.out.println("Finished in " + watch.elapsed(TimeUnit.SECONDS) + " seconds");
+                threw = false;
+            } finally {
+                Closeables.close(writer, threw);
             }
         }
 

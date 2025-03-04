@@ -42,6 +42,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import ch.qos.logback.classic.Level;
 
 import org.apache.jackrabbit.guava.common.collect.Iterators;
+import org.apache.jackrabbit.guava.common.io.Closeables;
 import org.apache.jackrabbit.guava.common.io.Closer;
 import org.apache.jackrabbit.guava.common.util.concurrent.Futures;
 import org.apache.jackrabbit.guava.common.util.concurrent.ListenableFuture;
@@ -692,7 +693,7 @@ public class UploadStagingCacheTest extends AbstractDataStoreCacheTest {
         // Create pre-upgrade load
         File home = folder.newFolder();
         File pendingUploadsFile = new File(home, DataStoreCacheUpgradeUtils.UPLOAD_MAP);
-        createGibberishLoad(pendingUploadsFile);
+        createGibberishLoad(home, pendingUploadsFile);
 
         LogCustomizer lc = LogCustomizer.forLogger(DataStoreCacheUpgradeUtils.class.getName())
             .filter(Level.WARN)
@@ -716,9 +717,13 @@ public class UploadStagingCacheTest extends AbstractDataStoreCacheTest {
     }
 
 
-    private void createGibberishLoad(File pendingUploadFile) throws IOException {
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter(pendingUploadFile, StandardCharsets.UTF_8))) {
+    private void createGibberishLoad(File home, File pendingUploadFile) throws IOException {
+        BufferedWriter writer = null;
+        try {
+            writer = new BufferedWriter(new FileWriter(pendingUploadFile, StandardCharsets.UTF_8));
             FileIOUtils.writeAsLine(writer, "jerhgiuheirghoeoorqehgsjlwjpfkkwpkf", false);
+        } finally {
+            Closeables.close(writer, true);
         }
     }
 
