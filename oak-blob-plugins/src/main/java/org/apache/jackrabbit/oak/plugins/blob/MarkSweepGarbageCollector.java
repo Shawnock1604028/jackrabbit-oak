@@ -56,9 +56,9 @@ import java.util.stream.Collectors;
 
 import org.apache.commons.collections4.ListValuedMap;
 import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
+import org.apache.commons.io.IOUtils;
 import org.apache.jackrabbit.guava.common.base.Stopwatch;
 import org.apache.jackrabbit.guava.common.collect.Iterators;
-import org.apache.jackrabbit.guava.common.io.Closeables;
 import org.apache.jackrabbit.guava.common.util.concurrent.ListenableFutureTask;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.LineIterator;
@@ -303,14 +303,10 @@ public class MarkSweepGarbageCollector implements BlobGarbageCollector {
                             stat.setStartTime(markers.get(uniqueSessionId).getLastModified());
                         }
 
-                        LineNumberReader reader = null;
-                        try {
-                            reader = new LineNumberReader(new InputStreamReader(refRec.getStream()));
+                        try (LineNumberReader reader = new LineNumberReader(new InputStreamReader(refRec.getStream()))) {
                             while (reader.readLine() != null) {
                             }
                             stat.setNumLines(reader.getLineNumber());
-                        } finally {
-                            Closeables.close(reader, true);
                         }
                     }
                 }
@@ -379,8 +375,16 @@ public class MarkSweepGarbageCollector implements BlobGarbageCollector {
             throw e;
         } finally {
             statsCollector.updateDuration(sw.elapsed(TimeUnit.MILLISECONDS), TimeUnit.MILLISECONDS);
+
+            // OAK-7662: retain output file when tracing
             if (!LOG.isTraceEnabled() && !traceOutput) {
-                Closeables.close(fs, threw);
+                try {
+                    IOUtils.close(fs);
+                } catch (IOException ioe) {
+                    if (!threw) {
+                        throw ioe;
+                    }
+                }
             }
         }
     }
@@ -727,7 +731,7 @@ public class MarkSweepGarbageCollector implements BlobGarbageCollector {
 
             // Get size
             getBlobReferencesSize(fs, consistencyStats);
-            
+
             if (!markOnly) {
                 // Find all blobs available in the blob store
                 ListenableFutureTask<Integer> blobIdRetriever = ListenableFutureTask.create(new BlobIdRetriever(fs,
@@ -768,8 +772,15 @@ public class MarkSweepGarbageCollector implements BlobGarbageCollector {
                 }
             }
         } finally {
+            // OAK-7662: retain output file when tracing
             if (!traceOutput && (!LOG.isTraceEnabled() && candidates == 0)) {
-                Closeables.close(fs, threw);
+                try {
+                    IOUtils.close(fs);
+                } catch (IOException ioe) {
+                    if (!threw) {
+                        throw ioe;
+                    }
+                }
             }
             sw.stop();
             consistencyStatsCollector.updateDuration(sw.elapsed(TimeUnit.MILLISECONDS), TimeUnit.MILLISECONDS);
@@ -1091,7 +1102,7 @@ public class MarkSweepGarbageCollector implements BlobGarbageCollector {
             } finally {
                 if (idsIter instanceof Closeable) {
                     try {
-                        Closeables.close((Closeable) idsIter, false);
+                        ((Closeable)idsIter).close();
                     } catch (Exception e) {
                         LOG.debug("Error closing iterator");
                     }

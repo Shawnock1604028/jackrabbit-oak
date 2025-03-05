@@ -41,7 +41,6 @@ import java.util.stream.StreamSupport;
 
 import org.apache.jackrabbit.guava.common.base.Splitter;
 import org.apache.jackrabbit.guava.common.base.Stopwatch;
-import org.apache.jackrabbit.guava.common.io.Closeables;
 import org.apache.jackrabbit.guava.common.io.Closer;
 import joptsimple.OptionParser;
 import org.apache.commons.io.FileUtils;
@@ -197,10 +196,8 @@ public class DataStoreCommand implements Command {
             if (dataStoreOpts.dumpRefs()) {
                 log.info("Initiating dump of data store references");
                 final File referencesTemp = File.createTempFile("traverseref", null, new File(opts.getTempDirectory()));
-                final BufferedWriter writer = new BufferedWriter(new FileWriter(referencesTemp, StandardCharsets.UTF_8));
 
-                boolean threw = true;
-                try {
+                try (BufferedWriter writer = new BufferedWriter(new FileWriter(referencesTemp, StandardCharsets.UTF_8))) {
                     BlobReferenceRetriever retriever = getRetriever(fixture, dataStoreOpts, opts);
 
                     retriever.collectReferences(new ReferenceCollector() {
@@ -228,7 +225,6 @@ public class DataStoreCommand implements Command {
 
                     writer.flush();
                     writer.close();
-                    threw = false;
 
                     sort(referencesTemp, idComparator);
 
@@ -238,8 +234,6 @@ public class DataStoreCommand implements Command {
                     FileUtils.forceMkdir(parent);
 
                     FileUtils.copyFile(referencesTemp, references);
-                } finally {
-                    Closeables.close(writer, threw);
                 }
             } else if (dataStoreOpts.dumpIds()) {
                 log.info("Initiating dump of data store IDs");
