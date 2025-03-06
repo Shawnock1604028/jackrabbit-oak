@@ -185,7 +185,13 @@ class ElasticIndexWriter implements FulltextIndexWriter<ElasticDocument> {
             return;
         }
 
-        final CreateIndexRequest request = ElasticIndexHelper.createIndexRequest(indexName, indexDefinition);
+        CreateIndexRequest request;
+        try {
+            request = ElasticIndexHelper.createIndexRequest(indexName, indexDefinition);
+        } catch (Exception e) {
+            LOG.error("Failed to create index {}: {}", indexName, e.toString());
+            throw e;
+        }
         LOG.debug("Creating Index with request {}", request);
         // create the new index
         try {
