@@ -1041,7 +1041,7 @@ public class PropertyIndexTest {
         assertTrue(indexedState.exists());
         Iterable<String> values = indexedState.getStrings("entry");
         assertEquals(1, IterableUtils.size(values));
-        assertEquals("/content", Iterables.getFirst(values, null));
+        assertEquals("/content", IterableUtils.getFirst(values, null));
 
         Mount roMount = mip.getMountByName("foo");
         assertFalse(getNode(indexed, "/oak:index/foo/" + getNodeForMount(roMount)).exists());

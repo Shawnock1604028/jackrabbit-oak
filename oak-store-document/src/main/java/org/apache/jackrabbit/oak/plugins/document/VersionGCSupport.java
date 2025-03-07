@@ -306,7 +306,7 @@ public class VersionGCSupport {
         if (doc.getSplitDocType() != SplitDocType.DEFAULT_NO_BRANCH) {
             return false;
         }
-        Revision r = Iterables.getFirst(doc.getAllChanges(), null);
+        Revision r = IterableUtils.getFirst(doc.getAllChanges(), null);
         return r != null && sweepRevs.isRevisionNewer(r);
     }
 }
