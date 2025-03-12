@@ -37,8 +37,6 @@ import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runners.Parameterized;
 
-import org.apache.jackrabbit.guava.common.collect.Iterables;
-
 public class LargeMergeRecoveryTest extends AbstractTwoNodeTest {
 
     public LargeMergeRecoveryTest(DocumentStoreFixture fixture) {
