@@ -197,10 +197,9 @@ public class MongoVersionGCSupport extends VersionGCSupport {
     }
 
     /**
-     * Logs an explain of a mongo query. If log level is INFO it does it one-lined,
-     * if log level is DEBUG it does it pretty print multi-lined.
+     * Logs an explain of a mongo query if trace is enabled
      *
-     * This is done once every 24h of livetime of this particular object.
+     * This is done once every 24h of lifetime of this particular object.
      *
      * @param logMsg the log message to use - should contain two "{}" for the hint
      *               and the explain json
@@ -218,14 +217,7 @@ public class MongoVersionGCSupport extends VersionGCSupport {
                 getNodeCollection(), query, hint);
         final BasicDBObject winningPlan = MongoUtils.getWinningPlan(explainResult);
         final BasicDBObject result = winningPlan == null ? explainResult : winningPlan;
-        if (LOG.isDebugEnabled()) {
-            // if log level is DEBUG, let's do a pretty print
-            String prettyPrinted = JsopBuilder.prettyPrint(result.toJson());
-            LOG.debug(logMsg, hint, prettyPrinted);
-        } else {
-            // otherwise let's just do a compact print
-            LOG.info(logMsg, hint, result);
-        }
+        LOG.trace(logMsg, hint, result);
         lastExplainLogMs = System.currentTimeMillis();
     }
 
@@ -271,7 +263,10 @@ public class MongoVersionGCSupport extends VersionGCSupport {
         // first sort by _modified and then by _id
         final Bson sort = ascending(MODIFIED_IN_SECS, ID);
 
-        logQueryExplain("fullGC query explain details, hint : {} - explain : {}", query, modifiedIdHint);
+        if (LOG.isTraceEnabled()) {
+            logQueryExplain("fullGC query explain details, hint : {} - explain : {}", query, modifiedIdHint);
+        }
+
         if (LOG.isDebugEnabled()) {
             BsonDocument bson = query.toBsonDocument(BsonDocument.class, MongoClient.getDefaultCodecRegistry());
             LOG.debug("getModifiedDocs : query is {}", bson);
