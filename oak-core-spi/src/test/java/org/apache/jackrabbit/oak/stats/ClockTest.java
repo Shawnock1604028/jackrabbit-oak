@@ -22,8 +22,11 @@ import static org.junit.Assert.assertTrue;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
+import java.time.temporal.TemporalUnit;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.function.Supplier;
 
 import org.apache.jackrabbit.oak.stats.Clock.Fast;
 import org.junit.BeforeClass;
@@ -39,12 +42,14 @@ public class ClockTest {
      */
     public static void main(String[] args) {
         System.out.println(
-                "average clock granularity: " + getAverageClockGranularity());
+                "average System.currentTimeMillis() granularity: " + getAverageMillisClockGranularity());
+        System.out.println(
+                "average System.nanoTime() granularity: " + getAverageNanosClockGranularity());
     }
 
     @BeforeClass
     public static void setup() {
-        SYSTEM_CLOCK_GRANULARITY = getAverageClockGranularity();
+        SYSTEM_CLOCK_GRANULARITY = getAverageMillisClockGranularity().toNanos() / 1000;
         FAST_CLOCK_GRANULARITY = 1000 * Clock.FAST_CLOCK_INTERVAL;
     }
 
@@ -207,28 +212,39 @@ public class ClockTest {
     }
 
     /**
-     * On some systems (for instance Windows), the granularity of {@code System.currentTimeMillis} depends
+     * On some systems (for instance Windows), the granularity of {@link System#currentTimeMillis()} depends
      * on system-wide settings that can change depending on what applications are running
      * (see, for instance <a href="http://www.lifehacker.com.au/2009/05/hidden-windows-7-tool-troubleshoots-sleep-mode-problems/">http://www.lifehacker.com.au/2009/05/hidden-windows-7-tool-troubleshoots-sleep-mode-problems/</a>).
      * This method tries to measure the granularity.
-     * @return average granularity of {@code System.currentTimeMillis} in 1/1000 of milliseconds
+     * @return average granularity of {@link System#currentTimeMillis()} in 1/1000 of milliseconds
      */
-    private static long getAverageClockGranularity() {
+    private static Duration getAverageMillisClockGranularity() {
+        return internalGetAverageClockGranularity(ChronoUnit.MILLIS, System::currentTimeMillis);
+    }
+
+    /**
+     * This is similar to {@link #getAverageMillisClockGranularity()}, but tests {@link System#nanoTime()}.
+     * @return average granularity of {@link System#nanoTime()} in 1/1000 of milliseconds
+     */
+    private static Duration getAverageNanosClockGranularity() {
+        return internalGetAverageClockGranularity(ChronoUnit.NANOS, System::nanoTime);
+    }
+
+    private static Duration internalGetAverageClockGranularity(TemporalUnit tu, Supplier<Long> ticker) {
         long sum = 0;
         int samples = 20; // number of samples to take
-        long last = System.currentTimeMillis();
+        long last = ticker.get();
 
         for (int i = 0; i < samples; i++) {
-            long now = System.currentTimeMillis();
+            long now = ticker.get();
             while (now == last) {
                 // busy-wait until return value changes
-                now = System.currentTimeMillis();
+                now = ticker.get();
             }
             sum += (now - last); // add the actual difference
             last = now;
         }
 
-        // return average in 1/1000ms
-        return (sum * 1000) / samples;
+        return Duration.of(sum / samples, tu);
     }
 }
