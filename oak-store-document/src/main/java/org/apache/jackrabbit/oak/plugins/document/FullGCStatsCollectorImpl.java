@@ -37,6 +37,7 @@ import static org.apache.jackrabbit.oak.stats.StatsOptions.METRICS_ONLY;
  */
 class FullGCStatsCollectorImpl implements FullGCStatsCollector {
 
+    static final String OAK_RUN_METRICS_PREFIX = "oak_FullGC";
     static final String FULL_GC = "FullGC";
     static final String READ_DOC = "READ_DOC";
     static final String DELETED_ORPHAN_NODE = "DELETED_ORPHAN_NODE";
@@ -83,9 +84,15 @@ class FullGCStatsCollectorImpl implements FullGCStatsCollector {
 
     private final CounterStats counter;
     private final CounterStats failureCounter;
+    private static String METRICS_QUALIFIED_NAME_PREFIX;
 
     FullGCStatsCollectorImpl(StatisticsProvider provider) {
+        this(provider, false);
+    }
+
+    FullGCStatsCollectorImpl(StatisticsProvider provider, boolean isOakRunJob) {
         this.provider = provider;
+        this.METRICS_QUALIFIED_NAME_PREFIX = isOakRunJob ? OAK_RUN_METRICS_PREFIX : FULL_GC;
 
         readDoc = meter(provider, READ_DOC);
         deletedOrphanNode = meter(provider, DELETED_ORPHAN_NODE);
@@ -232,11 +239,10 @@ class FullGCStatsCollectorImpl implements FullGCStatsCollector {
     }
 
     private static String qualifiedName(String metricName) {
-        return FULL_GC + "." + metricName;
+        return METRICS_QUALIFIED_NAME_PREFIX + "." + metricName;
     }
 
     private MeterStats getMeter(Map<GCPhase, MeterStats> map, GCPhase phase, String name) {
         return map.computeIfAbsent(phase, p -> meter(provider, name + "." + p.name()));
     }
-
 }

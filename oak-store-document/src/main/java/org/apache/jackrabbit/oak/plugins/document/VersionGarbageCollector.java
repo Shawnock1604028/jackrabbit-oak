@@ -271,6 +271,7 @@ public class VersionGarbageCollector {
     private GCMonitor gcMonitor = GCMonitor.EMPTY;
     private RevisionGCStats gcStats = new RevisionGCStats(NOOP);
     private FullGCStatsCollector fullGCStats = new FullGCStatsCollectorImpl(NOOP);
+    private FullGCMetricsExporter fullGCMetricsExporter;
 
     VersionGarbageCollector(DocumentNodeStore nodeStore,
                             VersionGCSupport gcSupport,
@@ -330,8 +331,16 @@ public class VersionGarbageCollector {
     }
 
     public void setStatisticsProvider(StatisticsProvider provider) {
+        setStatisticsProvider(provider, false);
+    }
+
+    public void setStatisticsProvider(StatisticsProvider provider, boolean pushMetrics) {
         this.gcStats = new RevisionGCStats(provider);
-        this.fullGCStats = new FullGCStatsCollectorImpl(provider);
+        this.fullGCStats = new FullGCStatsCollectorImpl(provider, pushMetrics);
+    }
+
+    public void setFullGCMetricsExporter(FullGCMetricsExporter exporter) {
+        this.fullGCMetricsExporter = exporter;
     }
 
     @NotNull
@@ -380,6 +389,9 @@ public class VersionGarbageCollector {
                 gcStats.finished(overall);
                 if (fullGCEnabled) {
                     fullGCStats.finished(overall);
+                    if (fullGCMetricsExporter != null) {
+                        fullGCMetricsExporter.onIterationComplete();
+                    }
                 }
                 if (overall.iterationCount > 1) {
                     gcMonitor.info("Revision garbage collection finished after {} iterations - aggregate statistics: {}",
@@ -972,6 +984,9 @@ public class VersionGarbageCollector {
                             // now remove the garbage in one go, if any
                             if (gc.hasGarbage() && phases.start(GCPhase.FULL_GC_CLEANUP)) {
                                 gc.removeGarbage(phases.stats);
+                                if (fullGCMetricsExporter != null) {
+                                    fullGCMetricsExporter.onIterationComplete();
+                                }
                                 phases.stop(GCPhase.FULL_GC_CLEANUP);
                             } else {
                                 if (log.isDebugEnabled()) {
