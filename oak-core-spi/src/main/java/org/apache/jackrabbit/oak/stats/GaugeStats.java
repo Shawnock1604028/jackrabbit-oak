@@ -16,13 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.jackrabbit.oak.run;
 
-import org.apache.jackrabbit.oak.plugins.document.FullGCMetricsExporter;
+package org.apache.jackrabbit.oak.stats;
 
-/**
- * Fixture encapsulating FullGC metrics exporter instance of T
- * @param <T>
- */
-public interface FullGCMetricsExporterFixture<T> extends FullGCMetricsExporter, MetricsExporterFixture<T> {
+import org.osgi.annotation.versioning.ProviderType;
+
+@ProviderType
+public interface GaugeStats<T> extends Stats {
+
+    /**
+     * Returns the metric's current value.
+     *
+     * @return the metric's current value
+     */
+    T getValue();
 }

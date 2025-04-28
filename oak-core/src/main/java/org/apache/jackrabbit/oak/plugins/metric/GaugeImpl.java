@@ -16,13 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.jackrabbit.oak.run;
 
-import org.apache.jackrabbit.oak.plugins.document.FullGCMetricsExporter;
+package org.apache.jackrabbit.oak.plugins.metric;
 
-/**
- * Fixture encapsulating FullGC metrics exporter instance of T
- * @param <T>
- */
-public interface FullGCMetricsExporterFixture<T> extends FullGCMetricsExporter, MetricsExporterFixture<T> {
+import com.codahale.metrics.Gauge;
+import org.apache.jackrabbit.oak.stats.GaugeStats;
+
+public class GaugeImpl<T> implements GaugeStats<T> {
+
+    private final Gauge<T> gauge;
+
+    public GaugeImpl(Gauge<T> gauge) {
+        this.gauge = gauge;
+    }
+    @Override
+    public T getValue() {
+        return this.gauge.getValue();
+    }
 }

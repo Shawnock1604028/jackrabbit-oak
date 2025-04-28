@@ -167,6 +167,7 @@ public class VersionGarbageCollector {
     static final String SETTINGS_COLLECTION_FULL_GC_DRY_RUN_DOCUMENT_ID_PROP = "fullGCDryRunId";
 
     private static FullGCMode fullGcMode = GAP_ORPHANS_EMPTYPROPS;
+    private final long fullGcGen;
 
     static FullGCMode getFullGcMode() {
         return fullGcMode;
@@ -306,7 +307,7 @@ public class VersionGarbageCollector {
         this.options = new VersionGCOptions();
 
         setFullGcMode(fullGCMode);
-        long fullGcGen = fullGCEnabled ? resetFullGcIfGenChange(fullGcGeneration) : fullGcGeneration;
+        this.fullGcGen = fullGCEnabled ? resetFullGcIfGenChange(fullGcGeneration) : fullGcGeneration;
         AUDIT_LOG.info("<init> VersionGarbageCollector created with fullGcMode: {}, maxFullGcAgeInMillis: {}, batchSize: {}, progressSize: {}, delayFactor: {}, fullGcGeneration: {}",
                 fullGcMode, fullGcMaxAgeInMillis, fullGCBatchSize, fullGCProgressSize, fullGCDelayFactor, fullGcGen);
     }
@@ -337,6 +338,15 @@ public class VersionGarbageCollector {
     public void setStatisticsProvider(StatisticsProvider provider, boolean pushMetrics) {
         this.gcStats = new RevisionGCStats(provider);
         this.fullGCStats = new FullGCStatsCollectorImpl(provider, pushMetrics);
+        // save OSGi configuration metrics
+        this.fullGCStats.enabled(fullGCEnabled);
+        this.fullGCStats.mode(fullGcMode.ordinal());
+        this.fullGCStats.delayFactor(fullGCDelayFactor);
+        this.fullGCStats.batchSize(fullGCBatchSize);
+        this.fullGCStats.progressSize(fullGCProgressSize);
+        this.fullGCStats.maxAge(fullGcMaxAgeInMillis);
+        this.fullGCStats.verificationEnabled(this.embeddedVerification);
+        this.fullGCStats.fullGCGeneration(this.fullGcGen);
     }
 
     public void setFullGCMetricsExporter(FullGCMetricsExporter exporter) {
