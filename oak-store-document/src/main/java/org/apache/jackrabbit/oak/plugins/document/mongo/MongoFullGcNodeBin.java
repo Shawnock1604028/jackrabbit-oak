@@ -173,4 +173,8 @@ public class MongoFullGcNodeBin implements FullGcNodeBin {
     public boolean isEnabled() {
         return enabled;
     }
+
+    MongoDocumentStore getMongoDocumentStore() {
+        return mongoDocumentStore;
+    }
 }
