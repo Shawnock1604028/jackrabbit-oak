@@ -18,6 +18,7 @@ package org.apache.jackrabbit.oak.plugins.index.elastic.index;
 
 import co.elastic.clients.elasticsearch._types.Time;
 import co.elastic.clients.elasticsearch._types.mapping.DenseVectorProperty;
+import co.elastic.clients.elasticsearch._types.mapping.DenseVectorSimilarity;
 import co.elastic.clients.elasticsearch._types.mapping.DynamicMapping;
 import co.elastic.clients.elasticsearch._types.mapping.Property;
 import co.elastic.clients.elasticsearch._types.mapping.TypeMapping;
@@ -57,6 +58,7 @@ import java.io.StringReader;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import static org.apache.jackrabbit.oak.plugins.index.elastic.ElasticPropertyDefinition.DEFAULT_SIMILARITY_METRIC;
@@ -218,7 +220,10 @@ class ElasticIndexHelper {
                             .properties("value", pb -> pb.denseVector(dv ->
                                             dv.index(true)
                                                     .dims(p.dims)
-                                                    .similarity(p.similarity)
+                                                    .similarity(
+                                                            Arrays.stream(DenseVectorSimilarity.values()).filter(s ->
+                                                                    Objects.equals(s.jsonValue(), p.similarity)).findAny().orElseThrow()
+                                                    )
                                     )
                             )
                             .properties("metadata", pb -> pb.flattened(b1 -> b1))
@@ -276,7 +281,7 @@ class ElasticIndexHelper {
         analyzerBuilder.filter("shingle",
                 tokenFilter -> tokenFilter.definition(
                         tokenFilterDef -> tokenFilterDef.shingle(
-                                shingle -> shingle.minShingleSize("2").maxShingleSize("3"))));
+                                shingle -> shingle.minShingleSize(2).maxShingleSize(3))));
         analyzerBuilder.analyzer("trigram",
                 ab -> ab.custom(
                         customAnalyzer -> customAnalyzer.tokenizer("standard").filter("lowercase", "shingle")));
@@ -368,7 +373,10 @@ class ElasticIndexHelper {
                 DenseVectorProperty denseVectorProperty = new DenseVectorProperty.Builder()
                         .index(true)
                         .dims(denseVectorSize)
-                        .similarity(DEFAULT_SIMILARITY_METRIC)
+                        .similarity(
+                                Arrays.stream(DenseVectorSimilarity.values()).filter(s ->
+                                        Objects.equals(s.jsonValue(), DEFAULT_SIMILARITY_METRIC)).findAny().orElseThrow()
+                        )
                         .build();
 
                 builder.properties(FieldNames.createSimilarityFieldName(
