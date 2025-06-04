@@ -29,7 +29,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.jackrabbit.oak.api.PropertyValue;
@@ -106,6 +105,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.jackrabbit.guava.common.collect.AbstractIterator;
+import org.apache.jackrabbit.guava.common.collect.Ordering;
 
 /**
  * Represents a parsed query.
@@ -124,7 +124,12 @@ public class QueryImpl implements Query {
 
     private boolean potentiallySlowTraversalQueryLogged;
 
-    private static final Comparator<QueryIndex> MINIMAL_COST_ORDERING = Comparator.comparingDouble(QueryIndex::getMinimumCost);
+    private static final Ordering<QueryIndex> MINIMAL_COST_ORDERING = new Ordering<QueryIndex>() {
+        @Override
+        public int compare(QueryIndex left, QueryIndex right) {
+            return Double.compare(left.getMinimumCost(), right.getMinimumCost());
+        }
+    };
 
     SourceImpl source;
     private String statement;
@@ -1087,8 +1092,8 @@ public class QueryImpl implements Query {
 
         // Sort the indexes according to their minimum cost to be able to skip the remaining indexes if the cost of the
         // current index is below the minimum cost of the next index.
-        List<? extends QueryIndex> queryIndexes = indexProvider.getQueryIndexes(rootState).stream()
-                .sorted(MINIMAL_COST_ORDERING).collect(Collectors.toList());
+        List<? extends QueryIndex> queryIndexes = MINIMAL_COST_ORDERING
+                .sortedCopy(indexProvider.getQueryIndexes(rootState));
         List<OrderEntry> sortOrder = getSortOrder(filter); 
         for (int i = 0; i < queryIndexes.size(); i++) {
             QueryIndex index = queryIndexes.get(i);
