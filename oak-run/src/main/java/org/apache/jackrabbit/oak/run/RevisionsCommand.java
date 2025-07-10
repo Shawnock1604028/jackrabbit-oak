@@ -218,7 +218,7 @@ public class RevisionsCommand implements Command {
                             "nodes for Full GC which are not accessed recently (currentTime - lastModifiedTime > fullGcMaxAge). Default: 86400 (one day)")
                     .withOptionalArg().ofType(Long.class).defaultsTo(TimeUnit.DAYS.toSeconds(1));
             fullGCAuditLoggingEnabled = parser.accepts("fullGCAuditLoggingEnabled", "Enable audit logging for Full GC")
-                    .withOptionalArg().ofType(Boolean.class).defaultsTo(FALSE);
+                    .withRequiredArg().ofType(Boolean.class).defaultsTo(FALSE);
             exportMetrics = parser.accepts("exportMetrics",
                     "type, URI to export the metrics and optional metadata all delimeted by semi-colon(;)").withRequiredArg();
         }
@@ -321,7 +321,7 @@ public class RevisionsCommand implements Command {
         }
 
         Boolean isFullGCAuditLoggingEnabled() {
-            return options.has(fullGCAuditLoggingEnabled);
+            return options.valueOf(fullGCAuditLoggingEnabled);
         }
 
         boolean exportMetrics() {
@@ -400,6 +400,7 @@ public class RevisionsCommand implements Command {
         builder.setFullGCBatchSize(options.getFullGcBatchSize());
         builder.setFullGCProgressSize(options.getFullGcProgressSize());
         builder.setFullGcMaxAgeMillis(SECONDS.toMillis(options.getFullGcMaxAge()));
+        builder.setFullGCAuditLoggingEnabled(options.isFullGCAuditLoggingEnabled());
 
         // create a VersionGCSupport while builder is read-write
         VersionGCSupport gcSupport = builder.createVersionGCSupport();
@@ -424,6 +425,7 @@ public class RevisionsCommand implements Command {
         System.out.println("EmbeddedVerification is enabled : " + gc.isEmbeddedVerificationEnabled());
         System.out.println("ResetFullGC is enabled : " + options.isResetFullGC());
         System.out.println("Compaction is enabled : " + options.doCompaction());
+        System.out.println("FullGCAuditLoggingEnabled : " + builder.isFullGCAuditLoggingEnabled());
         System.out.println("IncludePaths are : " + sortedSet(gc.getFullGCIncludePaths()));
         System.out.println("ExcludePaths are : " + sortedSet(gc.getFullGCExcludePaths()));
         System.out.println("FullGcMode is : " + VersionGarbageCollector.getFullGcMode());
