@@ -19,7 +19,7 @@
 
 package org.apache.jackrabbit.oak.commons;
 
-import com.google.common.collect.TreeTraverser;
+import org.apache.jackrabbit.guava.common.collect.TreeTraverser;
 import org.apache.commons.collections4.FluentIterable;
 import org.jetbrains.annotations.NotNull;
 import org.junit.Assert;
