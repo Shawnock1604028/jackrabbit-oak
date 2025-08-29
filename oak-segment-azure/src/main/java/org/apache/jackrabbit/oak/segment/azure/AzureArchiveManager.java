@@ -16,6 +16,7 @@
  */
 package org.apache.jackrabbit.oak.segment.azure;
 
+import com.azure.core.util.BinaryData;
 import com.azure.core.util.polling.PollResponse;
 import com.azure.storage.blob.BlobContainerClient;
 import com.azure.storage.blob.models.BlobCopyInfo;
@@ -56,6 +57,10 @@ public class AzureArchiveManager implements SegmentArchiveManager {
 
     private static final Logger log = LoggerFactory.getLogger(AzureArchiveManager.class);
 
+    private static final String DELETED_ARCHIVE_MARKER = "deleted";
+
+    private static final String CLOSED_ARCHIVE_MARKER = "closed";
+
     protected final BlobContainerClient readBlobContainerClient;
 
     protected final BlobContainerClient writeBlobContainerClient;
@@ -89,8 +94,10 @@ public class AzureArchiveManager implements SegmentArchiveManager {
             Iterator<String> it = archiveNames.iterator();
             while (it.hasNext()) {
                 String archiveName = it.next();
-                if (isArchiveEmpty(archiveName)) {
-                    delete(archiveName);
+                if (deleteInProgress(archiveName)) {
+                    if (writeAccessController.isWritingAllowed()) {
+                        delete(archiveName);
+                    }
                     it.remove();
                 }
             }
@@ -101,21 +108,19 @@ public class AzureArchiveManager implements SegmentArchiveManager {
     }
 
     /**
-     * Check if there's a valid 0000. segment in the archive
+     * Check if the archive is being deleted.
+     *
      * @param archiveName
-     * @return true if the archive is empty (no 0000.* segment)
+     * @return true if the "deleted" marker exists
      */
-    private boolean isArchiveEmpty(String archiveName) throws BlobStorageException {
-        String fullBlobPrefix = getDirectory(archiveName) + "0000.";
-        ListBlobsOptions listBlobsOptions = new ListBlobsOptions();
-        listBlobsOptions.setPrefix(fullBlobPrefix);
-        return !readBlobContainerClient.listBlobs(listBlobsOptions, null).iterator().hasNext();
+    private boolean deleteInProgress(String archiveName) throws BlobStorageException {
+        return readBlobContainerClient.getBlobClient(getDirectory(archiveName) + DELETED_ARCHIVE_MARKER).exists();
     }
 
     @Override
     public SegmentArchiveReader open(String archiveName) throws IOException {
         try {
-            String closedBlob = getDirectory(archiveName) + "closed";
+            String closedBlob = getDirectory(archiveName) + CLOSED_ARCHIVE_MARKER;
             if (!readBlobContainerClient.getBlobClient(closedBlob).exists()) {
                 return null;
             }
@@ -138,21 +143,43 @@ public class AzureArchiveManager implements SegmentArchiveManager {
     @Override
     public boolean delete(String archiveName) {
         try {
+            uploadDeletedMarker(archiveName);
             getBlobs(archiveName)
                     .forEach(blobItem -> {
                         try {
-                            writeAccessController.checkWritingAllowed();
-                            writeBlobContainerClient.getBlobClient(blobItem.getName()).delete();
+                            String blobName = getName(blobItem);
+                            if (!blobName.equals(DELETED_ARCHIVE_MARKER) && !blobName.equals(CLOSED_ARCHIVE_MARKER)) {
+                                writeAccessController.checkWritingAllowed();
+                                writeBlobContainerClient.getBlobClient(blobItem.getName()).delete();
+                            }
                         } catch (BlobStorageException e) {
                             log.error("Can't delete segment {}", blobItem.getName(), e);
                         }
                     });
+            deleteClosedMarker(archiveName);
+            deleteDeletedMarker(archiveName);
             return true;
-        } catch (IOException e) {
+        } catch (IOException | BlobStorageException e) {
             log.error("Can't delete archive {}", archiveName, e);
             return false;
         }
     }
+
+    private void deleteDeletedMarker(String archiveName) throws BlobStorageException {
+        writeAccessController.checkWritingAllowed();
+        writeBlobContainerClient.getBlobClient(getDirectory(archiveName) + DELETED_ARCHIVE_MARKER).deleteIfExists();
+    }
+
+    private void deleteClosedMarker(String archiveName) throws BlobStorageException {
+        writeAccessController.checkWritingAllowed();
+        writeBlobContainerClient.getBlobClient(getDirectory(archiveName) + CLOSED_ARCHIVE_MARKER).deleteIfExists();
+    }
+
+    private void uploadDeletedMarker(String archiveName) throws BlobStorageException {
+        writeAccessController.checkWritingAllowed();
+        writeBlobContainerClient.getBlobClient(getDirectory(archiveName) + DELETED_ARCHIVE_MARKER).getBlockBlobClient().upload(BinaryData.fromBytes(new byte[0]), true);
+    }
+
 
     @Override
     public boolean renameTo(String from, String to) {
@@ -240,7 +267,8 @@ public class AzureArchiveManager implements SegmentArchiveManager {
     private void delete(String archiveName, Set<UUID> recoveredEntries) throws IOException {
         getBlobs(archiveName)
                 .forEach(blobItem -> {
-                    if (!recoveredEntries.contains(RemoteUtilities.getSegmentUUID(getName(blobItem)))) {
+                    String name = getName(blobItem);
+                    if (RemoteUtilities.isSegmentName(name) && !recoveredEntries.contains(RemoteUtilities.getSegmentUUID(name))) {
                         try {
                             writeBlobContainerClient.getBlobClient(blobItem.getName()).delete();
                         } catch (BlobStorageException e) {
