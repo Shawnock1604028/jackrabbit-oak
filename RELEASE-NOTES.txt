@@ -64,7 +64,9 @@ Bug
 Improvement
 
     [OAK-11841] - Optimizations and additional logging of performance metrics to statistical facets
+    [OAK-11849] - Make timeout for querying facets with Elasticsearch configurable
     [OAK-11850] - Use MutableInt to compute facets to avoid boxing/unboxing between Int and Integer
+    [OAK-11851] - Log performance metrics of statistical facets and simplify logic
     [OAK-11857] - Improve path handling in oak-segment-azure
     [OAK-11861] - segment store initialization should run in parallel
     [OAK-11866] - Support for datastore files without length
@@ -75,6 +77,7 @@ Task
 
     [OAK-10674] - use Oak's Bloom filter instead Guava's
     [OAK-11859] - update Tomcat dependency to 9.0.108
+    [OAK-11870] - Allow passing fullGCGeneration parameter to RevisionsCommand
     [OAK-11897] - Remove exports from oak-segment-azure
     [OAK-11900] - SplitPersistenceTest: disable three tests on Windows platform
     [OAK-11908] - Update Easymock dependency to 5.6.0
