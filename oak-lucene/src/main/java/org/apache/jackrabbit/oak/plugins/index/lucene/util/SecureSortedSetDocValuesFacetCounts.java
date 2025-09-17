@@ -150,11 +150,11 @@ class SecureSortedSetDocValuesFacetCounts extends SortedSetDocValuesFacetCounts 
                 while (ord != SortedSetDocValues.NO_MORE_ORDS) {
                     termsEnum.seekExact(ord);
                     String facetDVTerm = termsEnum.term().utf8ToString();
-                    String[] facetDVDimPaths = FacetsConfig.stringToPath(facetDVTerm);
+                    String [] facetDVDimPaths = FacetsConfig.stringToPath(facetDVTerm);
 
-                    // first element is dimension name
+                    // first element is dimention name
                     for (int i = 1; i < facetDVDimPaths.length; i++) {
-                        markInaccessible(facetDVDimPaths[i]);
+                        markInaccessbile(facetDVDimPaths[i]);
                     }
 
                     ord = docValues.nextOrd();
@@ -162,11 +162,8 @@ class SecureSortedSetDocValuesFacetCounts extends SortedSetDocValuesFacetCounts 
             }
         }
 
-        void markInaccessible(@NotNull String label) {
-            Integer index = labelToIndexMap.get(label);
-            if (index != null) {
-                inaccessibleCounts[index]++;
-            }
+        void markInaccessbile(@NotNull String label) {
+            inaccessibleCounts[labelToIndexMap.get(label)]++;
         }
 
         LabelAndValue[] updateLabelAndValue() {
