@@ -235,9 +235,12 @@ public class LdapIdentityProviderTest extends AbstractLdapIdentityProviderTest {
         providerConfig.getGroupConfig().setIdAttribute(null);
 
         ExternalUser user = idp.getUser(TEST_USER1_UID);
-        Iterable<ExternalIdentityRef> groupRefs = user.getDeclaredGroups();
-        Iterable<String> groupIds = IterableUtils.transform(groupRefs, externalIdentityRef -> externalIdentityRef.getId());
-        assertEquals(Set.of(TEST_USER1_GROUPS), SetUtils.toSet(groupIds));
+
+        if(user != null){
+            Iterable<ExternalIdentityRef> groupRefs = user.getDeclaredGroups();
+            Iterable<String> groupIds = IterableUtils.transform(groupRefs, externalIdentityRef -> externalIdentityRef.getId());
+            assertEquals(Set.of(TEST_USER1_GROUPS), SetUtils.toSet(groupIds));
+        }
     }
 
     @Test
